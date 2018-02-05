@@ -1,5 +1,21 @@
 package com.redhat.fabric8.analytics.cpe2pkg;
 
+/*
+ * Copyright 2018 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -17,17 +33,20 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
-import org.apache.lucene.util.Version;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
+import org.owasp.dependencycheck.data.lucene.SearchFieldAnalyzer;
 
 public class Main {
+
+    private static final String VENDOR_FIELD = "vendor";
+    private static final String PRODUCT_FIELD = "product";
 
     public static void main(String[] args) throws IOException, ParseException {
 
@@ -62,7 +81,7 @@ public class Main {
 
         String querystr = args[0];
 
-        Query q = new QueryParser("title", analyzer).parse(querystr);
+        Query q = new QueryParser(PRODUCT_FIELD, analyzer).parse(querystr);
 
         IndexReader reader = DirectoryReader.open(index);
         IndexSearcher searcher = new IndexSearcher(reader);
@@ -78,18 +97,17 @@ public class Main {
 
     private static void addDoc(IndexWriter w, String vendor, String product) throws IOException {
         Document doc = new Document();
-        doc.add(new TextField("vendor", vendor, Field.Store.YES));
-        doc.add(new TextField("product", product, Field.Store.YES));
+        doc.add(new TextField(VENDOR_FIELD, vendor, Field.Store.YES));
+        doc.add(new TextField(PRODUCT_FIELD, product, Field.Store.YES));
         w.addDocument(doc);
     }
 
     private static Analyzer createSearchingAnalyzer() {
         final Map<String, Analyzer> fieldAnalyzers = new HashMap<>();
-        fieldAnalyzers.put("id", new KeywordAnalyzer());
-        final SearchFieldAnalyzer productFieldAnalyzer = new SearchFieldAnalyzer(Version.LUCENE_7_0_1);
-        final SearchFieldAnalyzer vendorFieldAnalyzer = new SearchFieldAnalyzer(Version.LUCENE_7_0_1);
-        fieldAnalyzers.put("product", productFieldAnalyzer);
-        fieldAnalyzers.put("vendor", vendorFieldAnalyzer);
+        final SearchFieldAnalyzer productFieldAnalyzer = new SearchFieldAnalyzer();
+        final SearchFieldAnalyzer vendorFieldAnalyzer = new SearchFieldAnalyzer();
+        fieldAnalyzers.put(VENDOR_FIELD, vendorFieldAnalyzer);
+        fieldAnalyzers.put(PRODUCT_FIELD, productFieldAnalyzer);
 
         return new PerFieldAnalyzerWrapper(new KeywordAnalyzer(), fieldAnalyzers);
     }
