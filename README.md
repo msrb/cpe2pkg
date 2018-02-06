@@ -5,13 +5,13 @@ cpe2pkg is a small utility which can help you to identify actual package names w
 Current version only supports Maven.
 
 
-# How to build
+## How to build
 
 ```shell
 $ mvn clean verify
 ```
 
-# How to run
+## How to run
 
 You will need a CSV file containing a list of all existing groupId,artifactId pairs.
 
