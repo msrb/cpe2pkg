@@ -43,22 +43,49 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
 import org.owasp.dependencycheck.data.lucene.SearchFieldAnalyzer;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
+
 public class Main {
 
     private static final String VENDOR_FIELD = "vendor";
     private static final String PRODUCT_FIELD = "product";
 
+    @Parameter(description = "query-string", required = true)
+    private String query;
+
+    @Parameter(names = { "--help", "-h" }, help = true)
+    private boolean help;
+
+    @Parameter(names = { "--pkgfile", "-p" }, description = "File cointaining list of package names")
+    private String pkgFile = "packages";
+
+    @Parameter(names = { "--top", "-t" }, description = "Number of top results to print")
+    private Integer top = 10;
+
     public static void main(String[] args) throws IOException, ParseException {
 
-        if (args.length != 1) {
-            System.err.println("missing query string");
+        Main main = new Main();
+        JCommander jcmd = JCommander.newBuilder().addObject(main).build();
+        jcmd.setProgramName("cpe2pkg");
+
+        try {
+            jcmd.parse(args);
+        } catch (ParameterException e) {
+            e.usage();
             System.exit(1);
         }
 
-        String pkgFile = "packages";
-        if (System.getProperty("pkgFile") != null) {
-            pkgFile = System.getProperty("pkgFile");
+        if (main.help) {
+            jcmd.usage();
+            return;
         }
+
+        main.run();
+    }
+
+    private void run() throws IOException {
 
         Analyzer analyzer = createSearchingAnalyzer();
         Directory index = new RAMDirectory();
@@ -66,7 +93,7 @@ public class Main {
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
         IndexWriter w = new IndexWriter(index, config);
 
-        List<String> packages = Files.readAllLines(Paths.get(pkgFile));
+        List<String> packages = Files.readAllLines(Paths.get(this.pkgFile));
         for (String pkg : packages) {
             String[] gav = pkg.split(",");
             if (gav.length < 3) {
@@ -79,19 +106,22 @@ public class Main {
         w.commit();
         w.close();
 
-        String querystr = args[0];
-
-        Query q = new QueryParser(PRODUCT_FIELD, analyzer).parse(querystr);
-
         IndexReader reader = DirectoryReader.open(index);
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopDocs docs = searcher.search(q, 10);
-        ScoreDoc[] hits = docs.scoreDocs;
 
-        for (int i = 0; i < hits.length; ++i) {
-            int docId = hits[i].doc;
-            Document d = searcher.doc(docId);
-            System.out.println((hits[i].score) + " " + d.get("vendor") + ":" + d.get("product"));
+        try {
+            Query q = new QueryParser(PRODUCT_FIELD, analyzer).parse(query);
+            TopDocs docs = searcher.search(q, this.top);
+            ScoreDoc[] hits = docs.scoreDocs;
+
+            for (int i = 0; i < hits.length; ++i) {
+                int docId = hits[i].doc;
+                Document d = searcher.doc(docId);
+                System.out.println((hits[i].score) + " " + d.get(VENDOR_FIELD) + ":" + d.get(PRODUCT_FIELD));
+            }
+        } catch (ParseException e) {
+            System.err.println("Unable to parse given query: " + e.getMessage());
+            System.exit(1);
         }
     }
 
