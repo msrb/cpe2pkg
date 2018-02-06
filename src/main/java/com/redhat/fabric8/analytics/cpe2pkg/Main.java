@@ -96,7 +96,7 @@ public class Main {
         List<String> packages = Files.readAllLines(Paths.get(this.pkgFile));
         for (String pkg : packages) {
             String[] gav = pkg.split(",");
-            if (gav.length < 3) {
+            if (gav.length < 2) {
                 // weird one, skipping...
                 continue;
             }
