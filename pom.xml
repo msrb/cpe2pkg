@@ -51,6 +51,13 @@
     </license>
   </licenses>
 
+  <scm>
+    <connection>scm:git:git://github.com/msrb/cpe2pkg.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/msrb/cpe2pkg.git</developerConnection>
+    <tag>HEAD</tag>
+    <url>https://github.com/msrb/cpe2pkg</url>
+  </scm>
+
   <build>
     <plugins>
       <plugin>
