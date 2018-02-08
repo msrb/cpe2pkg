@@ -94,21 +94,6 @@ public class Main {
 
         Analyzer analyzer = createSearchingAnalyzer();
         Directory index = buildIndex(analyzer);
-        IndexWriterConfig config = new IndexWriterConfig(analyzer);
-        IndexWriter w = new IndexWriter(index, config);
-
-        List<String> packages = Files.readAllLines(Paths.get(this.pkgFile));
-        for (String pkg : packages) {
-            String[] gav = pkg.split(",");
-            if (gav.length < 2) {
-                // weird one, skipping...
-                continue;
-            }
-            addDoc(w, gav[0], gav[1]);
-        }
-
-        w.commit();
-        w.close();
 
         IndexReader reader = DirectoryReader.open(index);
         IndexSearcher searcher = new IndexSearcher(reader);
