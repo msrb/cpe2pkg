@@ -67,7 +67,12 @@ public class Main {
     public static void main(String[] args) throws IOException, ParseException {
 
         Main main = new Main();
-        JCommander jcmd = JCommander.newBuilder().addObject(main).build();
+        main.configureAndRun(args);
+    }
+
+    protected void configureAndRun(String[] args) throws IOException {
+
+        JCommander jcmd = JCommander.newBuilder().addObject(this).build();
         jcmd.setProgramName("cpe2pkg");
 
         try {
@@ -77,19 +82,18 @@ public class Main {
             System.exit(1);
         }
 
-        if (main.help) {
+        if (this.help) {
             jcmd.usage();
             return;
         }
 
-        main.run();
+        run();
     }
 
     private void run() throws IOException {
 
         Analyzer analyzer = createSearchingAnalyzer();
-        Directory index = new RAMDirectory();
-
+        Directory index = buildIndex(analyzer);
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
         IndexWriter w = new IndexWriter(index, config);
 
@@ -125,14 +129,35 @@ public class Main {
         }
     }
 
-    private static void addDoc(IndexWriter w, String vendor, String product) throws IOException {
+    private Directory buildIndex(Analyzer analyzer) throws IOException {
+        Directory index = new RAMDirectory();
+        IndexWriterConfig config = new IndexWriterConfig(analyzer);
+        IndexWriter w = new IndexWriter(index, config);
+
+        List<String> packages = Files.readAllLines(Paths.get(this.pkgFile));
+        for (String pkg : packages) {
+            String[] gav = pkg.split(",");
+            if (gav.length < 2) {
+                // weird one, skipping...
+                continue;
+            }
+            addDoc(w, gav[0], gav[1]);
+        }
+
+        w.commit();
+        w.close();
+
+        return index;
+    }
+
+    private void addDoc(IndexWriter w, String vendor, String product) throws IOException {
         Document doc = new Document();
         doc.add(new TextField(VENDOR_FIELD, vendor, Field.Store.YES));
         doc.add(new TextField(PRODUCT_FIELD, product, Field.Store.YES));
         w.addDocument(doc);
     }
 
-    private static Analyzer createSearchingAnalyzer() {
+    private Analyzer createSearchingAnalyzer() {
         final Map<String, Analyzer> fieldAnalyzers = new HashMap<>();
         final SearchFieldAnalyzer productFieldAnalyzer = new SearchFieldAnalyzer();
         final SearchFieldAnalyzer vendorFieldAnalyzer = new SearchFieldAnalyzer();
