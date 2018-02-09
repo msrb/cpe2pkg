@@ -19,12 +19,15 @@ package com.redhat.fabric8.analytics.cpe2pkg;
 import java.io.IOException;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.assertTrue;
 
 public class MainTest {
@@ -75,5 +78,23 @@ public class MainTest {
         String[] resultPair = lines[0].split(" ");
         assertTrue(resultPair.length == 2);
         assertTrue(resultPair[1], resultPair[1].equals("org.apache.poi:poi"));
+    }
+
+    @Test
+    public void noDuplicatesTest() throws IOException, ParseException {
+        assertTrue("Bug in tests", this.out.toString().length() == 0);
+
+        Main main = new Main();
+        main.configureAndRun(new String[]{"--pkgfile", pkgFile, "--top", "1", "vendor:( apache poi ) AND product:( poi )"});
+
+        String[] lines = this.out.toString().split("\n");
+
+        Set<String> resultSet = new HashSet<String>();
+        for (String line: lines) {
+            String[] resultPair = line.split(" ");
+            assertTrue(resultPair.length == 2);
+            resultSet.add(resultPair[1]);
+        }
+        assertTrue(resultSet.size() == lines.length);
     }
 }
